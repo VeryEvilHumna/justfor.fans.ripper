@@ -1,15 +1,20 @@
+print("Loading libraries")
+
 import os
 import shutil
 import sys
 import json
 import requests
 
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 
 import config
 from Class.JJFPost import JJFPost
 
+print("Libraries loaded")
 
+VERBOSE = config.VERBOSE
 
 loopct = 0
 
@@ -66,8 +71,10 @@ def photo_save(ppost):
 
 
     for img in photos_url:
-        print(f'p: {img[0]}')
-        print(img[1])
+        
+        if VERBOSE:    
+            print(f'p: {img[0]}')
+            print(img[1])
 
         try:
             response = requests.get(img[1], stream=True)
@@ -78,6 +85,16 @@ def photo_save(ppost):
         except Exception as e:
             print(e)
 
+
+"""
+
+VIDEO SAVING IS BROKEN FOR NOW, JFF STORE MOST NEW VIDEOS IN HLS FORMAT, WHICH IS NOT SUPPORTED BY THIS SCRIPT.
+
+TODO:
+    add support for segmented video delivery format (hls)
+    fix broken tqdm progressbar
+
+"""
 
 
 def video_save(vpost):
@@ -99,16 +116,22 @@ def video_save(vpost):
         vpost.url_vid = vidurl.get('1080p', '')
         vpost.url_vid = vidurl.get('540p', '') if vpost.url_vid == '' else vpost.url_vid
 
-        print(f'v: {vpath}')
-        print(vpost.url_vid)
-
+        if VERBOSE:
+            print(f'v: {vpath}')
+            print(vpost.url_vid)
+            
+        print("")
+        
         response = requests.get(vpost.url_vid, stream=True)
 
-        print("Downloading " + str(round(int(response.headers.get('content-length'))/1024/1024, 2)) + " MB")
+        total_size = int(response.headers.get('content-length', 0))
+
+        progress_bar = tqdm(response.iter_content(chunk_size=1024), total=total_size, unit='B', unit_scale=True, desc=vpost.title) # 20 June 2023: broken progressbar, TODO: fix. k is actually MB
+                                                                                                                                   # 44.9k/47.1MB [00:04<1:24:24, 10.9kB/s]
 
         with open(vpath, 'wb') as out_file:
-            shutil.copyfileobj(response.raw, out_file)
-        del response
+            for chunk in progress_bar:
+                out_file.write(chunk)
 
     except Exception as e:
         print(e)
@@ -121,7 +144,9 @@ def text_save(tpost):
 
     folder = create_folder(tpost)
     tpath = os.path.join(folder, tpost.title)
-    print(f't: {tpath}')
+
+    if VERBOSE:
+        print(f't: {tpath}') 
 
     with open(tpath, "w", encoding='utf-8') as file:
         file.write(tpost.full_text)
@@ -181,6 +206,9 @@ def get_html(loopct):
         
 
 if __name__ == "__main__":
+
+    if VERBOSE:
+        print("DEBUG MODE, VERBOSE OUTPUT.")
 
     if len(sys.argv) == 3:
         uid = sys.argv[1]

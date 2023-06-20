@@ -20,7 +20,9 @@ file_name_format = '{post_date}_{desc}{photo_seq}.{ext}'
 api_url = 'https://justfor.fans/ajax/getPosts.php?UserID={userid}&Type=All&StartAt={seq}&Source=Home&UserHash4={hash}'
 
 
-
 # for debugging purposes
+
+VERBOSE = True
+
 if __name__ == "__main__":
     print(api_url.format(userid=uid, hash=hsh, seq=0))
